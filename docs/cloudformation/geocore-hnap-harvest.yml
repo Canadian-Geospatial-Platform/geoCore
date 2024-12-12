@@ -84,11 +84,11 @@ Resources:
         Key: 
           Fn::If:
             - IsProd
-            - cloudformation-templates/lambda/geocore-hnap-harvest/geocore-hnap-harvest-20230823-1800.zip
+            - cloudformation-templates/lambda/geocore-hnap-harvest/geocore-hnap-harvest-20241212-1100.zip
             - Fn::If:
               - IsStage
-              - cloudformation-templates/lambda/geocore-hnap-harvest/geocore-hnap-harvest-20230823-1800.zip
-              - cloudformation-templates/lambda/geocore-hnap-harvest/geocore-hnap-harvest-20230823-1800.zip
+              - cloudformation-templates/lambda/geocore-hnap-harvest/geocore-hnap-harvest-20241212-1100.zip
+              - cloudformation-templates/lambda/geocore-hnap-harvest/geocore-hnap-harvest-20241212-1100.zip
       MemorySize: 3009
       Handler: app.lambda_handler
       Timeout: 900
