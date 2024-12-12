@@ -21,7 +21,7 @@ Conditions:
   IsDev: !Equals [dev, !Ref Environment]
 
 Resources:
-  HnapJsonHarvester2:
+  HnapJsonHarvesterAppGeoCav2:
     Type: AWS::Serverless::Function
     Properties:
       Runtime: python3.9
@@ -52,7 +52,7 @@ Resources:
   HnapJsonHarvesterRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: !Sub 'harvester-10mins-${Environment}'
+      Name: !Sub 'harvester-10mins-app-geo-ca-v2-${Environment}'
       Description: Harvester on a 10 minute interval
       State: DISABLED
       ScheduleExpression: 'rate(10 minutes)'
@@ -60,21 +60,21 @@ Resources:
         - 
           Arn: 
             Fn::GetAtt: 
-              - HnapJsonHarvester2
+              - HnapJsonHarvesterAppGeoCav2
               - Arn
-          Id: !Ref HnapJsonHarvester2
+          Id: !Ref HnapJsonHarvesterAppGeoCav2
 
   PermissionForEventsToInvokeHarvesterLambda: 
     Type: AWS::Lambda::Permission
     Properties: 
-      FunctionName: !Ref HnapJsonHarvester2
+      FunctionName: !Ref HnapJsonHarvesterAppGeoCav2
       Action: 'lambda:InvokeFunction'
       Principal: 'events.amazonaws.com'
       SourceArn: !GetAtt 
         - HnapJsonHarvesterRule
         - Arn
 
-   LambdaExecutionRole:
+  LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
