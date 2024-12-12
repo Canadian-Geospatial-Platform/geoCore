@@ -118,7 +118,7 @@ Resources:
           GEOCORE_TEMPLATE_BUCKET_NAME:  !Sub 'webpresence-geocore-template-${Environment}'
           GEOCORE_TEMPLATE_NAME: 'geocore-format-null-template.json'
           ITEM_LINK_BUCKET_NAME: !Sub 'eo-sg-datacube-item-links-${Environment}'
-          PROCESSED_DATA_BUCKET_NAME: !Ref ProcessedDataS3Bucket
+          PROCESSED_DATA_BUCKET_NAME: !Sub 'eo-sg-processed-data-rcm-ard-${Environment}'
           API_ROOT: 'https://www.eodms-sgdot.nrcan-rncan.gc.ca/stac'
           ROOT_NAME: 'EODMS Datacube API / EODMS Cube de données API'
           SOURCE: 'eodms'
@@ -175,7 +175,7 @@ Resources:
         Variables:
           GEOCORE_TEMPLATE_BUCKET_NAME: !Sub 'webpresence-geocore-template-${Environment}'
           GEOCORE_TEMPLATE_NAME: 'geocore-format-null-template.json'
-          PROCESSED_DATA_BUCKET_NAME: !Ref ProcessedDataS3Bucket
+          PROCESSED_DATA_BUCKET_NAME: !Sub 'eo-sg-processed-data-rcm-ard-${Environment}'
           API_ROOT: 'https://www.eodms-sgdot.nrcan-rncan.gc.ca/stac'
           ROOT_NAME: 'EODMS Datacube API / EODMS Cube de données API'
           SOURCE: 'eodms'
@@ -405,7 +405,7 @@ Resources:
       Timeout: 900
       Environment:
         Variables:
-          GEOJSON_BUCKET_NAME: !Ref ProcessedDataS3Bucket
+          GEOJSON_BUCKET_NAME: !Sub 'eo-sg-processed-data-rcm-ard-${Environment}'
           PARQUET_BUCKET_NAME:  !Sub 'webpresence-geocore-geojson-to-parquet-${Environment}'
           DYNAMODB_TABLE: 'analytics_popularity'
           PARQUET_FILENAME: 'rcm-ard.parquet'
