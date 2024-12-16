@@ -123,7 +123,7 @@ Resources:
     Type: AWS::SageMaker::NotebookInstance
     Properties:
       NotebookInstanceName: semantic-search-nb
-      InstanceType: ml.t3.2xlarge
+      InstanceType: ml.t3.medium
       RoleArn: !GetAtt NBRole.Arn
       DefaultCodeRepository: !GetAtt CodeRepository.CodeRepositoryName
 
@@ -212,9 +212,9 @@ Resources:
     Properties:
       CodeUri: 
         Bucket: !Ref DeploymentBucket
-        Key: cloudformation-templates/lambda/semantic-search/Invoke-sagemaker-pretrain-20240508-2200.zip
+        Key: cloudformation-templates/lambda/semantic-search/Invoke-sagemaker-pretrain-20241216-1700.zip
 
-      MemorySize: 512
+      MemorySize: 3009
       Timeout: 900
       Handler: app.lambda_handler
       Runtime: python3.9
