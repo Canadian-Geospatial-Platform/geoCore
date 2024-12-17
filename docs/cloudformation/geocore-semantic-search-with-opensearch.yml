@@ -24,7 +24,7 @@ Parameters:
  #Todo: change SagemakerEndpoint to a resource that can be referenced 
   SagemakerEndpoint:
     Type: String
-    Default: semantic-search-model-1709665975
+    Default: Copy-endpoint-name-from-SageMaker-AI-Dashboard-via-AWS-Console
     Description: sagamaker endpoint for the pretrained/finetuned models 
   OSDomainName:
     Type: String
@@ -48,7 +48,7 @@ Parameters:
 #Todo: change OSEndpoint to a resource that can be referenced 
   OSEndpoint:
     Type: String
-    Default: search-semantic-search-dfcizxxxuj62dusl5skmeu3czu.ca-central-1.es.amazonaws.com
+    Default: Copy-domain-endpoint-from-OpenSearch-Domains-via-AWS-console
     Description: OpenSearch endpoint 
   OSSecretID:
     Type: String
@@ -427,7 +427,7 @@ Resources:
                     Access-Control-Allow-Origin:
                       type: "string"
               x-amazon-apigateway-integration: #Integration response:https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-specification-api-gateway-extensions.html
-                type: aws_proxy
+                type: aws
                 httpMethod: POST
                 uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${InvokeSagemakerEndpointPretrain.Arn}/invocations'
                 responses: 
@@ -436,10 +436,27 @@ Resources:
                     responseParameters:
                       method.response.header.Access-Control-Allow-Origin: "'*'" 
                 requestTemplates:
-                  application/json: "{\r\n    \"method\" : \"$input.params('method')\",\r\n\
-                    \    \"searchString\" : \"$input.params('searchString')\"}"
-                  #passthroughBehavior: "when_no_templates"
-                  #contentHandling: "CONVERT_TO_TEXT"
+                  application/json: |
+                    {
+                      "method": "$input.params('method')",
+                      "q": "$input.params('q')",
+                      "bbox": "$input.params('bbox')",
+                      "relation": "$input.params('relation')",
+                      "begin": "$input.params('begin')",
+                      "end": "$input.params('end')",
+                      "org": "$input.params('org')",
+                      "type": "$input.params('type')",
+                      "theme": "$input.params('theme')",
+                      "foundational": "$input.params('foundational')",
+                      "source_system": "$input.params('source_system')",
+                      "eo_collection": "$input.params('eo_collection')",
+                      "polarization": "$input.params('polarization')",
+                      "orbit_direction": "$input.params('orbit_direction')",
+                      "lang": "$input.params('lang')",
+                      "sort": "$input.params('sort')",
+                      "size": "$input.params('size')",
+                      "from": "$input.params('from')"
+                    }
             options:
               consumes:
               - "application/json"
