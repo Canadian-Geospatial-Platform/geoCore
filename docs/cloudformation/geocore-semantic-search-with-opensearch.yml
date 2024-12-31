@@ -228,6 +228,10 @@ Resources:
           OS_ENDPOINT:  !Ref OSEndpoint
           OS_SECRET_ID: !Ref OSSecretID
           SAGEMAKER_ENDPOINT: !Ref SagemakerEndpoint
+          MODEL_NAME: !If 
+            - IsProd
+            - minilm-knn
+            - minilm-pretrain-knn
       PackageType: Zip
       Role: !GetAtt InvokeSagemakerLambdaExecutionRole.Arn
       Events:
