@@ -53,7 +53,7 @@ Parameters:
   OSSecretID:
     Type: String
     Default: dev/OpenSearch/SemanticSearch
-    Description: SSM parameter name for OpenSearch user name and password   
+    Description: SSM parameter name for OpenSearch user name and password
 
 
 Conditions:
@@ -74,9 +74,17 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              AWS: '*'
+              AWS: !GetAtt InvokeSagemakerLambdaExecutionRole.Arn
             Action: 'es:*'
             Resource: !Sub arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/*/*
+          - Effect: Allow
+            Principal:
+              Service: es.amazonaws.com
+            Action: logs:PutLogEvents
+            Resource:
+              - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/${Environment}/webpresence/search-audit-logs:*
+              - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/${Environment}/webpresence/search-slow-search-logs:*
+              - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/${Environment}/webpresence/search-slow-index-logs:*
       EngineVersion: 'OpenSearch_2.11'
       DomainName: semantic-search
       ClusterConfig:
@@ -100,6 +108,21 @@ Resources:
         KmsKeyId: alias/aws/es
       DomainEndpointOptions:
         EnforceHTTPS: True
+      LogPublishingOptions:
+        SEARCH_SLOW_LOGS:
+          CloudWatchLogsLogGroupArn: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/${Environment}/webpresence/search-audit-logs"
+          Enabled: True
+        INDEX_SLOW_LOGS:
+          CloudWatchLogsLogGroupArn: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/${Environment}/webpresence/search-slow-search-logs"
+          Enabled: True
+        AUDIT_LOGS:
+          CloudWatchLogsLogGroupArn: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/${Environment}/webpresence/search-slow-index-logs"
+          Enabled: True
+    DependsOn:
+      - AuditLogsLogGroup
+      - SlowSearchLogsLogGroup
+      - SlowIndexLogsLogGroup
+      - OSLogGroupResourcePolicy
 
   OpenSearchSecret:
     Type: AWS::SecretsManager::Secret
@@ -108,6 +131,62 @@ Resources:
       Description: OpenSearch username and password
       SecretString: !Sub '{ "username" : "${OpenSearchUsername}", "password" : "${OpenSearchPassword}" }'
 
+########################################################
+# Post OpenSearch configurations  
+########################################################
+
+  SlowLogConfigFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: index.lambda_handler
+      Role: !GetAtt InvokeSagemakerLambdaExecutionRole.Arn
+      FunctionName: "SlowLogConfigFunction"
+      Runtime: python3.9
+      Timeout: 60
+      Environment:
+        Variables:
+          OSEndpoint: !Ref OSEndpoint
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import urllib.request
+          
+          from os import environ
+
+          def lambda_handler(event, context):
+              endpoint = environ['OSEndpoint']
+
+              # The slow log settings to apply
+              settings = {
+                  "settings": {
+                      "index.search.slowlog.threshold.query.warn": "5ms",  # Capture all queries
+                      "index.search.slowlog.level": "TRACE",  # Capture detailed query information
+                      "index.search.slowlog.source": "1000"  # Capture the query source for up to 1000 characters
+                  }
+              }
+
+              # Convert settings to JSON string
+              data = json.dumps(settings).encode('utf-8')
+
+              # Set headers for the request
+              req = urllib.request.Request(
+                  f"{endpoint}/_settings", data=data, headers={'Content-Type': 'application/json'}, method='PUT'
+              )
+
+              try:
+                  with urllib.request.urlopen(req) as response:
+                      response_body = response.read()
+                      return {
+                          'Status': 'SUCCESS',
+                          'Message': 'Slow logs settings applied successfully',
+                          'Data': json.loads(response_body)
+                      }
+              except Exception as e:
+                  return {
+                      'Status': 'FAILED',
+                      'Message': f"Failed to apply slow logs settings: {str(e)}"
+                  }
 
 ########################################################
 # Set up SageMaker notebook instance   
@@ -213,7 +292,6 @@ Resources:
       CodeUri: 
         Bucket: !Ref DeploymentBucket
         Key: cloudformation-templates/lambda/semantic-search/Invoke-sagemaker-pretrain-20241216-1700.zip
-
       MemorySize: 3009
       Timeout: 900
       Handler: app.lambda_handler
@@ -505,12 +583,58 @@ Resources:
                 gatewayresponse.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
                 gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
                 gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-                           
 
+  OSLogGroupResourcePolicy:
+    Type: AWS::Logs::ResourcePolicy
+    Properties:
+      PolicyName: OpenSearchLogPolicy
+      PolicyDocument: 
+        Fn::Sub: |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "es.amazonaws.com"
+                },
+                "Action": [
+                  "logs:CreateLogStream",
+                  "logs:PutLogEvents"
+                ],
+                "Resource": [
+                  "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/${Environment}/webpresence/search-audit-logs:*",
+                  "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/${Environment}/webpresence/search-slow-search-logs:*",
+                  "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/${Environment}/webpresence/search-slow-index-logs:*"
+                ]
+              }
+            ]
+          }
 
   LogGroup:
     Type: Custom::LogGroup
     Properties:
       ServiceToken: !ImportValue LogGroupHelperLambdaArn
       LogGroupName: !Sub '/${Environment}/webpresence/search'
+      RetentionInDays: 3653
+
+  AuditLogsLogGroup:
+    Type: Custom::LogGroup
+    Properties:
+      ServiceToken: !ImportValue LogGroupHelperLambdaArn
+      LogGroupName: !Sub '/${Environment}/webpresence/search-audit-logs'
+      RetentionInDays: 3653
+
+  SlowSearchLogsLogGroup:
+    Type: Custom::LogGroup
+    Properties:
+      ServiceToken: !ImportValue LogGroupHelperLambdaArn
+      LogGroupName: !Sub '/${Environment}/webpresence/search-slow-search-logs'
+      RetentionInDays: 3653
+
+  SlowIndexLogsLogGroup:
+    Type: Custom::LogGroup
+    Properties:
+      ServiceToken: !ImportValue LogGroupHelperLambdaArn
+      LogGroupName: !Sub '/${Environment}/webpresence/search-slow-index-logs'
       RetentionInDays: 3653
