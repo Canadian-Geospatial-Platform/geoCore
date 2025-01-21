@@ -536,6 +536,7 @@ Resources:
                       "orbit_direction": "$input.params('orbit_direction')",
                       "lang": "$input.params('lang')",
                       "sort": "$input.params('sort')",
+                      "order": "$input.params('order')",
                       "size": "$input.params('size')",
                       "from": "$input.params('from')"
                     }
